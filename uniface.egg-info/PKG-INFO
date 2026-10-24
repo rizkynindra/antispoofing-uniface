@@ -1,0 +1,52 @@
+Metadata-Version: 2.4
+Name: uniface
+Version: 4.0.0rc3
+Summary: UniFace: A Unified Face Analysis Library for Python
+Author-email: Yakhyokhuja Valikhujaev <yakhyo9696@gmail.com>
+Maintainer-email: Yakhyokhuja Valikhujaev <yakhyo9696@gmail.com>
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/yakhyo/uniface
+Project-URL: Repository, https://github.com/yakhyo/uniface
+Project-URL: Documentation, https://yakhyo.github.io/uniface
+Project-URL: Quick Start, https://yakhyo.github.io/uniface/quickstart/
+Project-URL: Model Zoo, https://yakhyo.github.io/uniface/models/
+Keywords: face-detection,face-recognition,face-tracking,facial-landmarks,face-parsing,face-segmentation,gaze-estimation,age-detection,gender-detection,computer-vision,deep-learning,onnx,onnxruntime,face-analysis,bisenet
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Python: <3.15,>=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: opencv-python>=4.5.0
+Requires-Dist: scikit-image>=0.22.0
+Requires-Dist: scipy>=1.7.0
+Requires-Dist: requests>=2.28.0
+Requires-Dist: tqdm>=4.64.0
+Provides-Extra: cpu
+Requires-Dist: onnxruntime>=1.16.0; python_version >= "3.11" and extra == "cpu"
+Requires-Dist: onnxruntime<1.24,>=1.16.0; python_version < "3.11" and extra == "cpu"
+Provides-Extra: gpu
+Requires-Dist: onnxruntime-gpu>=1.16.0; python_version >= "3.11" and extra == "gpu"
+Requires-Dist: onnxruntime-gpu<1.24,>=1.16.0; python_version < "3.11" and extra == "gpu"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: ruff>=0.4.0; extra == "dev"
+Requires-Dist: pre-commit>=3.0.0; extra == "dev"
+Provides-Extra: docs
+Requires-Dist: mkdocs-material; extra == "docs"
+Requires-Dist: pymdown-extensions; extra == "docs"
+Requires-Dist: mkdocs-git-committers-plugin-2; extra == "docs"
+Requires-Dist: mkdocs-git-revision-date-localized-plugin; extra == "docs"
+
+# FOR GPU
+
+uv venv --python 3.10
+git clone https://github.com/yakhyo/uniface.git
+uv pip install -e ".[gpu]"

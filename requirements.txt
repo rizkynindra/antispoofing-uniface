@@ -1,0 +1,10 @@
+uniface[gpu]
+pandas
+openpyxl
+python-dotenv
+fastapi
+uvicorn[standard]
+pydantic
+requests
+httpx
+gunicorn
