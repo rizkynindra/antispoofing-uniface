@@ -1,6 +1,6 @@
 # UniFace: Face Comparison, Anti-Spoofing & eKYC Service
 
-Unified Face Verification, Anti-Spoofing (Liveness Detection), and Batch Face Comparison system built with **UniFace** (RetinaFace, ArcFace, MiniFASNet) and **FastAPI**, compliant with **BPJS Ketenagakerjaan Standard Log (Section 6.1.1)**.
+Unified Face Verification, Anti-Spoofing (Liveness Detection), and Batch Face Comparison system built with **UniFace** (RetinaFace, ArcFace, MiniFASNet) and **FastAPI**
 
 ---
 
@@ -12,7 +12,6 @@ Unified Face Verification, Anti-Spoofing (Liveness Detection), and Batch Face Co
 * **Flexible Input Formats**: Accepts direct HTTP/S3 URLs, relative S3 paths, or Base64 encoded strings.
 * **REST API Service**: High-performance FastAPI server running on default port `2112` with interactive Swagger UI (`/docs`).
 * **Multi-GPU Ready**: Optimized for multi-GPU setups (e.g., $2 \times 24\text{ GB}$ NVIDIA L4).
-* **BPJS Ketenagakerjaan Standard Log**: Emits clean single-line logs with `| START |` and `| STOP |` delimiters, `TraceID` (`TC-[UUID]`), `TransactionID` (`TR-[UUID]`), WIB timestamps, and daily file rotation (`system_log_ddmmyyyy.log`).
 * **Batch Processing**: CLI tool to compare image URL pairs across Excel datasets.
 
 ---
@@ -148,7 +147,7 @@ python face-compare.py \
   --output result/result_face_comparison_20082026.xlsx \
   --col1 FOTO_PEMULIHAN \
   --col2 FOTO_PENGKINIAN \
-  --base-url http://s3.bpjsketenagakerjaan.go.id
+  --base-url 
 ```
 
 ---
@@ -194,7 +193,7 @@ with FaceCompareClient("http://127.0.0.1:2112", channel_id="PORTAL_KLAIM") as cl
     print(client.health().device)
     try:
         verdict = client.compare(
-            "http://s3.bpjsketenagakerjaan.go.id/kyc/ref.jpg",
+            "http://your_url/kyc/ref.jpg",
             "live.jpg",
             check_liveness_image2=True,
         )
@@ -272,7 +271,7 @@ Future<void> matchPhoto(Uint8List capturedJpeg) async {
   try {
     print((await client.health()).device);
     final verdict = await client.compare(
-      image1: ImageRef.url('http://s3.bpjsketenagakerjaan.go.id/kyc/ref.jpg'),
+      image1: ImageRef.url('http://your_url/kyc/ref.jpg'),
       image2: ImageRef.bytes(capturedJpeg),
       checkSpoof: true,
     );
@@ -303,7 +302,7 @@ Future<void> matchPhoto(Uint8List capturedJpeg) async {
 ```json
 {
   "ChId": "PORTAL_KLAIM",
-  "image1": "http://s3.bpjsketenagakerjaan.go.id/kyc/ref_photo_123.jpg",
+  "image1": "http://your_url/kyc/ref_photo_123.jpg",
   "image2": {
     "type": "base64",
     "data": "/9j/4AAQSkZJRgABAQAAAQ..."
