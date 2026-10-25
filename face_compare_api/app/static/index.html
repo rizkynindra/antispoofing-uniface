@@ -423,6 +423,7 @@
         <div class="photos">
           <fieldset>
             <legend>Reference photo</legend>
+            <!-- space-hide-start -->
             <div class="choices">
               <label class="choice">
                 <input type="radio" name="image1-source" value="file" checked>
@@ -433,16 +434,19 @@
                 Use an address
               </label>
             </div>
+            <!-- space-hide-end -->
             <div class="panel" data-panel="file">
               <label class="field" for="image1-file">Photo file</label>
               <input id="image1-file" type="file" accept="image/jpeg,image/png,image/webp,image/bmp,.jpg,.jpeg,.png,.webp,.bmp">
             </div>
+            <!-- space-hide-start -->
             <div class="panel" data-panel="url" hidden>
               <label class="field" for="image1-url">Photo address
                 <span class="hint">HTTP address or an S3 path.</span>
               </label>
               <input id="image1-url" type="text" spellcheck="false" autocomplete="off" placeholder="https:// or an S3 path">
             </div>
+            <!-- space-hide-end -->
             <div class="preview">
               <img id="image1-preview" alt="" hidden>
               <p id="image1-preview-note" class="preview-note">No preview yet.</p>
@@ -452,6 +456,7 @@
 
           <fieldset>
             <legend>Second photo</legend>
+            <!-- space-hide-start -->
             <div class="choices">
               <label class="choice">
                 <input type="radio" name="image2-source" value="file" checked>
@@ -462,16 +467,19 @@
                 Use an address
               </label>
             </div>
+            <!-- space-hide-end -->
             <div class="panel" data-panel="file">
               <label class="field" for="image2-file">Photo file</label>
               <input id="image2-file" type="file" accept="image/jpeg,image/png,image/webp,image/bmp,.jpg,.jpeg,.png,.webp,.bmp">
             </div>
+            <!-- space-hide-start -->
             <div class="panel" data-panel="url" hidden>
               <label class="field" for="image2-url">Photo address
                 <span class="hint">HTTP address or an S3 path.</span>
               </label>
               <input id="image2-url" type="text" spellcheck="false" autocomplete="off" placeholder="https:// or an S3 path">
             </div>
+            <!-- space-hide-end -->
             <div class="preview">
               <img id="image2-preview" alt="" hidden>
               <p id="image2-preview-note" class="preview-note">No preview yet.</p>
@@ -483,10 +491,12 @@
         <fieldset>
           <legend>Comparison settings</legend>
           <div class="options-fields">
+            <!-- space-hide-start -->
             <label class="field" for="channel-id">Channel ID
               <span class="hint">Leave blank to send UNKNOWN.</span>
               <input id="channel-id" type="text" autocomplete="off" placeholder="Channel ID">
             </label>
+            <!-- space-hide-end -->
             <label class="field" for="match-threshold">Match threshold
               <input id="match-threshold" type="number" min="0" max="1" step="0.01" value="0.75" inputmode="decimal" aria-describedby="threshold-hint">
             </label>
@@ -557,6 +567,10 @@
       image2: 0,
     };
 
+    function slotField(slotId, kind) {
+      return document.getElementById(slotId + "-" + kind);
+    }
+
     function slotSource(slotId) {
       const selected = document.querySelector('input[name="' + slotId + '-source"]:checked');
       return selected ? selected.value : "file";
@@ -608,7 +622,8 @@
         noteNode.textContent = note;
       }
       const hasFile = document.getElementById(slotId + "-file").files.length > 0;
-      const hasUrl = document.getElementById(slotId + "-url").value.trim() !== "";
+      const urlField = slotField(slotId, "url");
+      const hasUrl = urlField ? urlField.value.trim() !== "" : false;
       clearButton.hidden = !(hasFile || hasUrl);
     }
 
@@ -628,7 +643,8 @@
       }
 
       revokeObjectUrl(slotId);
-      const address = document.getElementById(slotId + "-url").value.trim();
+      const urlField = slotField(slotId, "url");
+      const address = urlField ? urlField.value.trim() : "";
       if (!address) {
         setPreview(slotId, "", "No preview yet.");
         return;
@@ -642,7 +658,10 @@
 
     function clearSlot(slotId) {
       document.getElementById(slotId + "-file").value = "";
-      document.getElementById(slotId + "-url").value = "";
+      const urlField = slotField(slotId, "url");
+      if (urlField) {
+        urlField.value = "";
+      }
       revokeObjectUrl(slotId);
       setPreview(slotId, "", "No preview yet.");
     }
@@ -662,18 +681,26 @@
       if (source === "file") {
         const field = document.getElementById(slotId + "-file");
         const file = field.files[0];
+        const addressAlso = slotField(slotId, "url");
         if (!file) {
-          return { error: "Choose a " + label + " file, or switch to an address.", field: field };
+          return {
+            error: addressAlso
+              ? "Choose a " + label + " file, or switch to an address."
+              : "Choose a " + label + " file.",
+            field: field,
+          };
         }
         if (file.size > MAX_PHOTO_BYTES) {
           return {
-            error: "The " + label + " is larger than 8 MB. Choose a smaller file or use an address.",
+            error: addressAlso
+              ? "The " + label + " is larger than 8 MB. Choose a smaller file or use an address."
+              : "The " + label + " is larger than 8 MB. Choose a smaller file.",
             field: field,
           };
         }
         return { file: file, field: field };
       }
-      const field = document.getElementById(slotId + "-url");
+      const field = slotField(slotId, "url");
       const address = field.value.trim();
       if (!address) {
         return { error: "Enter an address for the " + label + ", or switch to a file.", field: field };
@@ -837,7 +864,7 @@
         addFact(facts, "Similarity", scoreText);
         addFact(facts, "Confidence", result.confidence_level);
       }
-      if (payload.ChId) {
+      if (payload.ChId && document.getElementById("channel-id")) {
         addFact(facts, "Channel", payload.ChId);
       }
       if (payload.execution_time_ms !== null && payload.execution_time_ms !== undefined) {
@@ -912,7 +939,7 @@
       }
 
       const channelField = document.getElementById("channel-id");
-      const channel = channelField.value.trim() || DEFAULT_CHANNEL;
+      const channel = channelField && channelField.value.trim() ? channelField.value.trim() : DEFAULT_CHANNEL;
       setBusy(true);
       renderLoading();
 
@@ -1003,14 +1030,17 @@
       document.getElementById(slotId + "-file").addEventListener("change", function () {
         refreshPreview(slotId);
       });
-      document.getElementById(slotId + "-url").addEventListener("input", function () {
-        const hasFile = document.getElementById(slotId + "-file").files.length > 0;
-        const hasUrl = document.getElementById(slotId + "-url").value.trim() !== "";
-        document.getElementById(slotId + "-clear").hidden = !(hasFile || hasUrl);
-      });
-      document.getElementById(slotId + "-url").addEventListener("change", function () {
-        refreshPreview(slotId);
-      });
+      const urlField = slotField(slotId, "url");
+      if (urlField) {
+        urlField.addEventListener("input", function () {
+          const hasFile = document.getElementById(slotId + "-file").files.length > 0;
+          const hasUrl = urlField.value.trim() !== "";
+          document.getElementById(slotId + "-clear").hidden = !(hasFile || hasUrl);
+        });
+        urlField.addEventListener("change", function () {
+          refreshPreview(slotId);
+        });
+      }
       document.getElementById(slotId + "-clear").addEventListener("click", function () {
         clearSlot(slotId);
       });

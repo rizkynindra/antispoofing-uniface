@@ -6,9 +6,10 @@ from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 
 from app.config import settings
+from app.gallery_routes import router as gallery_router
 from app.request_context import build_compare_log_context, resolve_channel_id
 from app.schemas import ErrorResponse, FaceCompareRequest, FaceCompareResponse
 from app.services.compare_service import CompareFailure, run_face_compare
@@ -22,6 +23,34 @@ logger = StandardLogger(
 )
 
 UI_INDEX = Path(__file__).resolve().parent / "static" / "index.html"
+_SPACE_HIDE_START = "<!-- space-hide-start -->"
+_SPACE_HIDE_END = "<!-- space-hide-end -->"
+_PRIVATE_API_TITLE = "Face Comparison API"
+_PRIVATE_API_DESCRIPTION = (
+    "High-performance Face Comparison Service using UniFace with Standard Log 6.1.1 compliance."
+)
+_SPACE_API_TITLE = "Face comparison"
+_SPACE_API_DESCRIPTION = "Compare two uploaded face photos."
+
+
+def api_metadata(space: bool) -> tuple[str, str]:
+    """OpenAPI title and description. The public Space does not name the private deployment."""
+    if space:
+        return _SPACE_API_TITLE, _SPACE_API_DESCRIPTION
+    return _PRIVATE_API_TITLE, _PRIVATE_API_DESCRIPTION
+
+
+def page_for_space(html: str) -> str:
+    """Drop address fields and the channel box so the Space only accepts uploaded photos."""
+    while _SPACE_HIDE_START in html and _SPACE_HIDE_END in html:
+        before, _, rest = html.partition(_SPACE_HIDE_START)
+        _, _, after = rest.partition(_SPACE_HIDE_END)
+        html = before + after
+    return html.replace(
+        '<html lang="en" data-theme="light">',
+        '<html lang="en" data-theme="light" data-upload-only="true">',
+        1,
+    )
 
 
 @asynccontextmanager
@@ -31,12 +60,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
 
+_api_title, _api_description = api_metadata(settings.HF_SPACE)
 app = FastAPI(
-    title="BPJS Ketenagakerjaan Face Comparison API",
-    description="High-performance Face Comparison Service using UniFace with Standard Log 6.1.1 compliance.",
+    title=_api_title,
+    description=_api_description,
     version=settings.SERVICE_VERSION,
     lifespan=lifespan,
 )
+
+app.include_router(gallery_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,9 +80,13 @@ app.add_middleware(
 
 
 @app.get("/", include_in_schema=False)
-async def face_compare_page() -> FileResponse:
-    """Serve the operator page for 1:1 face comparison."""
-    return FileResponse(UI_INDEX, headers={"Cache-Control": "no-cache"})
+async def face_compare_page() -> Response:
+    """Serve the operator page. On the Space, the page only offers file upload."""
+    headers = {"Cache-Control": "no-cache"}
+    if not settings.HF_SPACE:
+        return FileResponse(UI_INDEX, headers=headers)
+    html = page_for_space(UI_INDEX.read_text(encoding="utf-8"))
+    return HTMLResponse(html, headers=headers)
 
 
 @app.get("/health", tags=["Health"])

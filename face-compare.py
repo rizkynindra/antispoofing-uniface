@@ -22,9 +22,10 @@ from app.core.image_bytes import create_image_session, download_and_decode_image
 from app.core.similarity import classify_similarity_label
 from app.core.url_utils import build_full_url
 
+from uniface.constants import AdaFaceWeights
 from uniface.detection import RetinaFace
 from uniface.face_utils import compute_similarity
-from uniface.recognition import ArcFace
+from uniface.recognition import AdaFace
 
 
 def compare_excel_faces(
@@ -48,14 +49,14 @@ def compare_excel_faces(
         if col not in df.columns:
             raise ValueError(f"Column '{col}' not found in {input_file}. Available columns: {list(df.columns)}")
 
-    print("Initializing UniFace models (RetinaFace & ArcFace)...")
+    print("Initializing UniFace models (RetinaFace & AdaFace IR-101)...")
     detector = RetinaFace()
-    recognizer = ArcFace()
+    recognizer = AdaFace(model_name=AdaFaceWeights.IR_101)
 
     detector_provider = detector.session.get_providers()[0]
     recognizer_provider = recognizer.session.get_providers()[0]
     print(f"RetinaFace Provider: {detector_provider}")
-    print(f"ArcFace Provider: {recognizer_provider}")
+    print(f"AdaFace Provider: {recognizer_provider}")
     if "CUDA" in detector_provider or "Tensorrt" in detector_provider:
         print("Execution Device: GPU (CUDA)")
     else:

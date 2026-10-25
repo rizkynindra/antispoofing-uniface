@@ -51,7 +51,7 @@ class FaceCompareRequest(BaseModel):
     """Request payload for /v1/compare."""
     ChId: str = Field(
         default="UNKNOWN",
-        description="Channel ID / Client Identifier (e.g. 'JMO', 'PORTAL_KLAIM', 'SIAPKERJA')."
+        description="Caller channel id. Echoed on the response."
     )
     image1: ImageInputType = Field(
         ...,

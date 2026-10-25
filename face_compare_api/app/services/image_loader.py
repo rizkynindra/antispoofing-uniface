@@ -64,6 +64,9 @@ def load_image(
     if data_type == "auto":
         data_type = "url" if is_likely_url(raw_data) else "base64"
 
+    if settings.HF_SPACE and data_type == "url":
+        return None, "Upload a photo file. This demo does not fetch a web address."
+
     if data_type == "url":
         full_url = build_full_url(raw_data, s3_base_url)
         if not full_url:

@@ -1,12 +1,13 @@
-"""UniFace engine wrapping RetinaFace, ArcFace, and MiniFASNet."""
+"""UniFace engine wrapping RetinaFace, AdaFace IR-101, and MiniFASNet."""
 
 import logging
 
 import numpy as np
 
+from uniface.constants import AdaFaceWeights
 from uniface.detection import RetinaFace
 from uniface.face_utils import compute_similarity
-from uniface.recognition import ArcFace
+from uniface.recognition import AdaFace
 from uniface.spoofing import MiniFASNet
 
 from app.config import settings
@@ -46,8 +47,8 @@ class FaceEngine:
         logger.info("Initializing RetinaFace detector")
         self.detector = RetinaFace()
 
-        logger.info("Initializing ArcFace recognizer")
-        self.recognizer = ArcFace()
+        logger.info("Initializing AdaFace IR-101 recognizer")
+        self.recognizer = AdaFace(model_name=AdaFaceWeights.IR_101)
 
         logger.info(
             "Initializing MiniFASNet anti-spoofing (threshold=%s)",

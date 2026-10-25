@@ -6,7 +6,13 @@ from app.config import settings
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run BPJS Ketenagakerjaan Face Comparison API Service")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run the face comparison service"
+            if settings.HF_SPACE
+            else "Run BPJS Ketenagakerjaan Face Comparison API Service"
+        )
+    )
     parser.add_argument("--host", type=str, default=settings.HOST, help="Host interface to bind")
     parser.add_argument("--port", type=int, default=settings.PORT, help="Port to bind")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload on code change")

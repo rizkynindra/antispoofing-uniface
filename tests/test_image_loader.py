@@ -14,3 +14,10 @@ def test_load_image_empty_string() -> None:
     image, error = load_image("   ")
     assert image is None
     assert error == "Image data is empty."
+
+
+def test_space_refuses_a_web_address(monkeypatch) -> None:
+    monkeypatch.setattr("app.services.image_loader.settings.HF_SPACE", True)
+    image, error = load_image("https://example.test/face.jpg")
+    assert image is None
+    assert error == "Upload a photo file. This demo does not fetch a web address."

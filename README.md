@@ -1,12 +1,13 @@
 # UniFace: Face Comparison, Anti-Spoofing & eKYC Service
 
-Unified Face Verification, Anti-Spoofing (Liveness Detection), and Batch Face Comparison system built with **UniFace** (RetinaFace, ArcFace, MiniFASNet) and **FastAPI**
+Unified Face Verification, Anti-Spoofing (Liveness Detection), and Batch Face Comparison system built with **UniFace** (RetinaFace, AdaFace IR-101, MiniFASNet) and **FastAPI**
 
 ---
 
 ## 📋 Features
 
-* **1:1 Face Comparison / Verification**: Cosine similarity matching using normalized 512-D embeddings (ArcFace).
+* **1:1 Face Comparison / Verification**: Cosine similarity matching using normalized 512-D embeddings (AdaFace IR-101).
+* **Face gallery search**: An admin stores one reference photo per person. A later selfie is scored against that gallery.
 * **Anti-Spoofing / Presentation Attack Detection (PAD)**: Passive RGB liveness detection using MiniFASNet.
 * **Face Quality & Pre-checks**: 5-point facial landmark alignment & bounding box detection (RetinaFace).
 * **Flexible Input Formats**: Accepts direct HTTP/S3 URLs, relative S3 paths, or Base64 encoded strings.
@@ -294,6 +295,12 @@ Future<void> matchPhoto(Uint8List capturedJpeg) async {
 
 `similarityThreshold`, `needConfirmationThreshold`, `traceId`, and `prevTransactionId` match the Python arguments. `FaceCompareException.errorCode` uses the same codes as the table in the Python section, including `TRANSPORT`.
 
+### 4. Hugging Face Space
+
+The public demo is the Gradio app in [huggingface/space](huggingface/space). It is published at https://huggingface.co/spaces/rizkynindra/face-compare. Visitors upload two photos side by side and press **Compare the photos**. Matching uses AdaFace IR-101. The first start downloads that model (about 249 MB). The spoof check is optional and looks at the second photo only. Do not copy `.env` into the Space.
+
+[Dockerfile](Dockerfile) is a separate CPU image of this FastAPI app for a Docker Space (`HF_SPACE=1`, port `7860`). It is not the Space that is running. Its card text is [huggingface/README.md](huggingface/README.md). The running Space card is [huggingface/space/README.md](huggingface/space/README.md).
+
 ---
 
 ## 📡 API Specification (`POST /v1/compare`)
@@ -345,6 +352,34 @@ Future<void> matchPhoto(Uint8List capturedJpeg) async {
 
 ---
 
+## Face gallery
+
+This follows the [UniFace enroll-then-search flow](https://yakhyo.github.io/uniface/modules/recognition/#building-a-face-database). `POST /v1/compare` still compares two photos you send together. The gallery keeps a reference photo on disk and searches a new selfie against those stored faces.
+
+The same lines as one-to-one compare apply: **0.75** is a match, **0.40** needs confirmation, and anything lower is a different person. Set `check_liveness` to `true` on the selfie when you want MiniFASNet to reject a printed photo, a screen, or a mask.
+
+Stored photos live in `face_compare_api/data/face_db` unless `FACE_GALLERY_DIR` is set. When `FACE_GALLERY_ADMIN_TOKEN` is set, enroll, list, read, and delete require the header `X-Admin-Token`. Search stays open so another user can send a selfie.
+
+Enroll a person:
+
+```bash
+curl -X POST http://127.0.0.1:2112/v1/gallery \
+  -H 'Content-Type: application/json' \
+  -d '{"person_id":"EMP001","label":"Ayu","image":"<base64 or url>"}'
+```
+
+Search with a selfie:
+
+```bash
+curl -X POST http://127.0.0.1:2112/v1/gallery/search \
+  -H 'Content-Type: application/json' \
+  -d '{"image":"<base64 or url>","options":{"check_liveness":true}}'
+```
+
+`GET /v1/gallery` lists people. `GET /v1/gallery/EMP001/photo` returns the stored JPEG. `DELETE /v1/gallery/EMP001` removes that person. OpenAPI for these routes is on `/docs`.
+
+---
+
 ## 📊 Decision Threshold Matrix
 
 | Cosine Similarity Score | Verdict (`is_match`) | Confidence | Description |
@@ -369,6 +404,6 @@ All service logs are written to `face_compare_api/logs/system_log_ddmmyyyy.log` 
 ## ⚠️ Model Notes & Behavior
 
 * **RetinaFace**: Detects faces and extracts 5 facial landmarks.
-* **ArcFace**: Generates normalized 512-D embeddings robust to aging and moderate pose variations.
-* **MiniFASNet**: Evaluates texture and moiré patterns to detect screen/photo spoofs.
+* **AdaFace IR-101**: Generates normalized 512-D embeddings. This is the matcher. It handles uneven photo quality better than the smaller ArcFace MobileNet model.
+* **MiniFASNet**: Evaluates texture and moiré patterns to detect a printed photo, a screen replay, or a mask. It does not detect a deepfake of the same person. A convincing fake of that person still matches, because the face looks the same.
 * **Lighting Consideration**: Detection confidence may drop under extremely bright, washed-out white backgrounds. Ensure adequate contrast when capturing live photos.
