@@ -58,6 +58,12 @@ cpu = [
 gpu = [
     "onnxruntime-gpu>=1.16.0; python_version >= '3.11'",
     "onnxruntime-gpu>=1.16.0,<1.24; python_version < '3.11'",
+    "nvidia-cuda-runtime-cu12>=12.4,<13",
+    "nvidia-cublas-cu12>=12.4,<13",
+    "nvidia-cuda-nvrtc-cu12>=12.4,<13",
+    "nvidia-cufft-cu12>=11.0,<12",
+    "nvidia-curand-cu12>=10.3,<11",
+    "nvidia-cudnn-cu12>=9.0,<10",
 ]
 dev = ["pytest>=7.0.0", "ruff>=0.4.0", "pre-commit>=3.0.0"]
 docs = [
@@ -150,7 +156,7 @@ skips = ["B101", "B614"]  # B101: assert, B614: torch.jit.load (models are SHA25
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["face_compare_api"]
+pythonpath = ["face_compare_api", "sdk"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"

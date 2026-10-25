@@ -15,8 +15,10 @@ def main() -> None:
 
     print("=" * 60)
     print(f"  Starting {settings.SERVICE_NAME} v{settings.SERVICE_VERSION}")
+    display_host = "localhost" if args.host in {"0.0.0.0", "::"} else args.host
     print(f"  Host: http://{args.host}:{args.port}")
-    print(f"  Docs: http://{args.host}:{args.port}/docs")
+    print(f"  UI:   http://{display_host}:{args.port}/")
+    print(f"  Docs: http://{display_host}:{args.port}/docs")
     print(f"  Logs: {settings.LOG_DIR}/{settings.LOG_FILE_PATTERN}")
     print("=" * 60)
 

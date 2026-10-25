@@ -45,8 +45,214 @@ Requires-Dist: pymdown-extensions; extra == "docs"
 Requires-Dist: mkdocs-git-committers-plugin-2; extra == "docs"
 Requires-Dist: mkdocs-git-revision-date-localized-plugin; extra == "docs"
 
-# FOR GPU
+# UniFace: Face Comparison, Anti-Spoofing & eKYC Service
 
+Unified Face Verification, Anti-Spoofing (Liveness Detection), and Batch Face Comparison system built with **UniFace** (RetinaFace, ArcFace, MiniFASNet) and **FastAPI**, compliant with **BPJS Ketenagakerjaan Standard Log (Section 6.1.1)**.
+
+---
+
+## 📋 Features
+
+* **1:1 Face Comparison / Verification**: Cosine similarity matching using normalized 512-D embeddings (ArcFace).
+* **Anti-Spoofing / Presentation Attack Detection (PAD)**: Passive RGB liveness detection using MiniFASNet.
+* **Face Quality & Pre-checks**: 5-point facial landmark alignment & bounding box detection (RetinaFace).
+* **Flexible Input Formats**: Accepts direct HTTP/S3 URLs, relative S3 paths, or Base64 encoded strings.
+* **REST API Service**: High-performance FastAPI server running on default port `2112` with interactive Swagger UI (`/docs`).
+* **Multi-GPU Ready**: Optimized for multi-GPU setups (e.g., $2 \times 24\text{ GB}$ NVIDIA L4).
+* **BPJS Ketenagakerjaan Standard Log**: Emits clean single-line logs with `| START |` and `| STOP |` delimiters, `TraceID` (`TC-[UUID]`), `TransactionID` (`TR-[UUID]`), WIB timestamps, and daily file rotation (`system_log_ddmmyyyy.log`).
+* **Batch Processing**: CLI tool to compare image URL pairs across Excel datasets.
+
+---
+
+## 🛠️ Installation
+
+### 1. Prerequisites
+* **Python**: `3.10` recommended (`>=3.10,<3.15`)
+* **CUDA / GPU**: NVIDIA GPU with CUDA drivers (e.g., NVIDIA L4, A100, RTX series)
+
+### 2. Setup Virtual Environment
+
+#### Option A: Using `uv` (Recommended / Fastest)
+```bash
+# Create virtual environment with Python 3.10
 uv venv --python 3.10
-git clone https://github.com/yakhyo/uniface.git
-uv pip install -e ".[gpu]"
+
+# Activate virtual environment
+source .venv/bin/activate
+```
+
+#### Option B: Using standard Python `venv`
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install Dependencies
+
+```bash
+# Install UniFace with GPU acceleration support
+pip install -e ".[gpu]"
+
+# Install API, Gunicorn, and batch dependencies
+pip install -r requirements.txt
+```
+
+> **Note on CPU-only machines**: If you do not have an NVIDIA GPU, install using `pip install -e ".[cpu]"`.
+
+### 4. Configure Environment Variables
+
+Copy the example environment file and adjust your settings:
+```bash
+cp .env.example .env
+```
+
+---
+
+## 🚀 How to Use
+
+### Method 1: Running the FastAPI Service (Development)
+
+Start the API service locally using the CLI runner:
+
+```bash
+# Run server on port 2112 with auto-reload
+python face_compare_api/run.py --port 2112 --reload
+```
+
+* **Interactive Swagger UI**: [http://localhost:2112/docs](http://localhost:2112/docs)
+* **ReDoc Documentation**: [http://localhost:2112/redoc](http://localhost:2112/redoc)
+* **Health Check**: `GET http://localhost:2112/health`
+
+---
+
+### Method 2: Running as a Production Systemd Service (2x 24GB NVIDIA L4)
+
+A dedicated systemd unit file [face-compare.service](file:///media/rizkynindra/Data1/PycharmProjects/antispoofing-uniface/face-compare.service) and [gunicorn_conf.py](file:///media/rizkynindra/Data1/PycharmProjects/antispoofing-uniface/face_compare_api/gunicorn_conf.py) are provided.
+
+#### 1. Optimal Configuration for 2x NVIDIA L4 (24GB VRAM each)
+* **Workers**: `4 - 6 workers` (2 to 3 workers per GPU).
+* **VRAM Consumption**: Each worker takes $\sim 1.5\text{ GB}$ VRAM, using $\sim 6\text{ GB}$ total per GPU, leaving ample headroom for batch bursts and CUDA graph caches.
+* **Worker Lifecycle**: `max_requests = 5000` with `max_requests_jitter = 500` to prevent memory fragmentation under long uptime.
+
+#### 2. Install and Enable the Service
+
+```bash
+# 1. Copy service file to systemd directory
+sudo cp face-compare.service /etc/systemd/system/
+
+# 2. Reload systemd daemon
+sudo systemctl daemon-reload
+
+# 3. Enable service on system boot
+sudo systemctl enable face-compare
+
+# 4. Start the service
+sudo systemctl start face-compare
+
+# 5. Check status
+sudo systemctl status face-compare
+```
+
+#### 3. Monitoring & Logs
+
+```bash
+# View real-time service logs
+journalctl -u face-compare -f
+
+# View application standard log file
+tail -f face_compare_api/logs/system_log_$(date +%d%m%Y).log
+```
+
+---
+
+### Method 3: Batch Face Comparison (`face-compare.py`)
+
+To run bulk face comparisons across rows of an Excel file containing image URLs:
+
+```bash
+python face-compare.py \
+  --input excel/Pemulihan_Akun_Pengkinian_Data.xlsx \
+  --output result/result_face_comparison_20082026.xlsx \
+  --col1 FOTO_PEMULIHAN \
+  --col2 FOTO_PENGKINIAN \
+  --base-url http://s3.bpjsketenagakerjaan.go.id
+```
+
+---
+
+## 📡 API Specification (`POST /v1/compare`)
+
+#### Request Body
+```json
+{
+  "ChId": "PORTAL_KLAIM",
+  "image1": "http://s3.bpjsketenagakerjaan.go.id/kyc/ref_photo_123.jpg",
+  "image2": {
+    "type": "base64",
+    "data": "/9j/4AAQSkZJRgABAQAAAQ..."
+  },
+  "options": {
+    "check_liveness_image2": true,
+    "similarity_threshold": 0.75,
+    "need_confirmation_threshold": 0.40
+  }
+}
+```
+
+#### Response (`200 OK`)
+```json
+{
+  "status": "SUCCESS",
+  "ChId": "PORTAL_KLAIM",
+  "result": {
+    "is_match": "TRUE",
+    "similarity_score": 0.8642,
+    "similarity_percentage": "86.42%",
+    "confidence_level": "HIGH"
+  },
+  "image1_metadata": {
+    "faces_detected": 1,
+    "bbox": [120.5, 80.2, 310.4, 320.1],
+    "is_live": null,
+    "liveness_score": null
+  },
+  "image2_metadata": {
+    "faces_detected": 1,
+    "bbox": [95.0, 75.3, 290.1, 315.8],
+    "is_live": true,
+    "liveness_score": 0.9955
+  },
+  "execution_time_ms": 68.4,
+  "message": "Comparison finished with verdict 'TRUE' (Score: 0.8642)"
+}
+```
+
+---
+
+## 📊 Decision Threshold Matrix
+
+| Cosine Similarity Score | Verdict (`is_match`) | Confidence | Description |
+| :--- | :--- | :--- | :--- |
+| **Score $\ge$ 0.75** | `TRUE` | `HIGH` | Same person confirmed. |
+| **0.40 $\le$ Score < 0.75** | `Need Confirmation` | `MEDIUM` | Uncertain (aging/angle); routed for manual review. |
+| **Score < 0.40** | `Different` | `LOW` | Different person detected. |
+
+---
+
+## 📝 Logging Specifications (Standard Log 6.1.1)
+
+All service logs are written to `face_compare_api/logs/system_log_ddmmyyyy.log` with automatic daily rotation in **WIB (UTC+7)**:
+
+```text
+2026-08-20 15:28:11.511 [INFO] TR-648e1d26-4ead-4127-a788-f31bbba06a94 svc-face-compare /v1/compare REST POST SYNC application/json compare PORTAL_KLAIM 0.00 ms 172.26.7.5 10.128.4.2 Comparison Request TC-2c69db96-71b8-496e-a41e-92736aeae488 | START | 'Start Prediction' on 'Image' with result 'PENDING' with error ''. Processing request for ChId: PORTAL_KLAIM
+2026-08-20 15:28:12.412 [INFO] TR-648e1d26-4ead-4127-a788-f31bbba06a94 svc-face-compare /v1/compare REST POST SYNC application/json compare PORTAL_KLAIM 900.96 ms 172.26.7.5 10.128.4.2 Comparison Result TC-2c69db96-71b8-496e-a41e-92736aeae488 Max Confidence: 1.0000 | STOP | 'Finish Prediction' on 'Image' with result 'TRUE' with error ''. Comparison result: TRUE. Similarity: 1.0000. Match: True
+```
+
+---
+
+## ⚠️ Model Notes & Behavior
+
+* **RetinaFace**: Detects faces and extracts 5 facial landmarks.
+* **ArcFace**: Generates normalized 512-D embeddings robust to aging and moderate pose variations.
+* **MiniFASNet**: Evaluates texture and moiré patterns to detect screen/photo spoofs.
+* **Lighting Consideration**: Detection confidence may drop under extremely bright, washed-out white backgrounds. Ensure adequate contrast when capturing live photos.

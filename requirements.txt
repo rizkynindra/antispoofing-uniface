@@ -1,4 +1,6 @@
-uniface[gpu]
+# The face models and the GPU or CPU runtime come from the editable install
+# in the README, not from this file. Installing uniface from PyPI here would
+# skip the local CUDA libraries.
 pandas
 openpyxl
 python-dotenv

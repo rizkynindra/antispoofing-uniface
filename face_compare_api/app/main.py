@@ -1,10 +1,12 @@
 """FastAPI application for face comparison with BPJS Standard Log."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.request_context import build_compare_log_context, resolve_channel_id
@@ -18,6 +20,8 @@ logger = StandardLogger(
     log_dir=settings.LOG_DIR,
     log_file_pattern=settings.LOG_FILE_PATTERN,
 )
+
+UI_INDEX = Path(__file__).resolve().parent / "static" / "index.html"
 
 
 @asynccontextmanager
@@ -41,6 +45,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/", include_in_schema=False)
+async def face_compare_page() -> FileResponse:
+    """Serve the operator page for 1:1 face comparison."""
+    return FileResponse(UI_INDEX, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/health", tags=["Health"])

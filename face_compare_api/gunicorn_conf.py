@@ -3,6 +3,10 @@
 import os
 import multiprocessing
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Server Socket
 bind = os.getenv("BIND", "0.0.0.0:2112")
 backlog = 2048

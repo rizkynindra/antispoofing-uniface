@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+face_compare_sdk/__init__.py
+face_compare_sdk/client.py
+face_compare_sdk/errors.py
+face_compare_sdk/models.py
+face_compare_sdk/py.typed
+face_compare_sdk.egg-info/PKG-INFO
+face_compare_sdk.egg-info/SOURCES.txt
+face_compare_sdk.egg-info/dependency_links.txt
+face_compare_sdk.egg-info/top_level.txt

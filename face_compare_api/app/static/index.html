@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Face compare</title>
+  <script>
+    try {
+      var savedTheme = localStorage.getItem("face-compare-theme");
+      if (savedTheme === "dark" || savedTheme === "light") {
+        document.documentElement.setAttribute("data-theme", savedTheme);
+      }
+    } catch (error) {
+      /* Keep light paper when storage is blocked. */
+    }
+  </script>
+  <style>
+    /*
+      Case sheet for staff comparing two photos.
+      Palatino on the title and verdict: a paper case heading.
+      Noto Sans on the form: the UI face already on this host, readable at field size.
+      Oxide stamp is the only accent: letterhead rule, compare button, same-person verdict,
+      and the keyboard focus ring. The skip link uses that same pair so the ring stays visible.
+      On dark paper the stamp lightens to #e0a898 so the rule, button, and ring still clear 3:1.
+      Surfaces stay flat. Hover and focus change color only.
+      Dial: ENERGY 1 / RHYTHM 1 / MOTION 1. Draft without direction.
+    */
+    :root,
+    [data-theme="light"] {
+      --paper: #f3efe6;
+      --ink: #1c1612;
+      --muted: #5c534a;
+      --field: #fffaf6;
+      --well: #e7e0d4;
+      --line: #5c534a;
+      --stamp: #8c2f1f;
+      --stamp-ink: #fffaf6;
+      --stamp-hover: #6e2418;
+      --disabled: #e4ddd0;
+      color-scheme: light;
+    }
+
+    [data-theme="dark"] {
+      --paper: #1c1612;
+      --ink: #f3efe6;
+      --muted: #d7cbbd;
+      --field: #2a241f;
+      --well: #2a241f;
+      --line: #d7cbbd;
+      --stamp: #e0a898;
+      --stamp-ink: #1c1612;
+      --stamp-hover: #c56b58;
+      --disabled: #2a241f;
+      color-scheme: dark;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    html {
+      font-size: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Noto Sans", "Liberation Sans", sans-serif;
+      font-size: 1rem;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .skip {
+      position: absolute;
+      left: 0.75rem;
+      top: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--stamp);
+      color: var(--stamp-ink);
+      text-decoration: none;
+      min-height: 2.75rem;
+      display: inline-flex;
+      align-items: center;
+      transform: translateY(-200%);
+    }
+
+    .skip:focus {
+      transform: none;
+    }
+
+    .sheet {
+      width: min(68rem, 100%);
+      margin: 0 auto;
+      padding: clamp(1rem, 3vw, 2.25rem);
+    }
+
+    header {
+      margin-bottom: 1.5rem;
+    }
+
+    .letterhead {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 0.75rem 1.5rem;
+      border-bottom: 3px solid var(--stamp);
+      padding-bottom: 0.75rem;
+    }
+
+    h1,
+    .verdict {
+      font-family: Palatino, "Palatino Linotype", "Liberation Serif", Georgia, serif;
+      font-weight: 700;
+      letter-spacing: 0;
+      line-height: 1.15;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+    }
+
+    h2,
+    h3 {
+      font-size: 1.05rem;
+      line-height: 1.3;
+      margin: 0 0 0.5rem;
+    }
+
+    .lede {
+      max-width: 40rem;
+      margin: 1rem 0 0.5rem;
+    }
+
+    #service-status,
+    .hint,
+    .draft {
+      color: var(--muted);
+    }
+
+    .draft,
+    #service-status {
+      margin: 0.75rem 0 0;
+    }
+
+    button,
+    input,
+    .choice,
+    .check,
+    footer a {
+      min-height: 2.75rem;
+    }
+
+    button,
+    input {
+      font: inherit;
+      color: var(--ink);
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      border-radius: 2px;
+      border: 2px solid var(--line);
+      background: var(--paper);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--well);
+    }
+
+    #compare-button {
+      width: 100%;
+      border-color: var(--stamp);
+      background: var(--stamp);
+      color: var(--stamp-ink);
+    }
+
+    #compare-button:hover {
+      background: var(--stamp-hover);
+      border-color: var(--stamp-hover);
+    }
+
+    button:disabled {
+      background: var(--disabled);
+      color: var(--muted);
+      border-color: var(--line);
+      cursor: not-allowed;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--stamp);
+      outline-offset: 3px;
+    }
+
+    form {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .photos,
+    .meta-pair,
+    .options-fields {
+      display: grid;
+      gap: 0.75rem;
+      min-width: 0;
+    }
+
+    fieldset {
+      margin: 0;
+      min-width: 0;
+      border: 1px solid var(--line);
+      padding: 0.75rem 1rem 1rem;
+    }
+
+    legend {
+      font-weight: 700;
+      padding: 0 0.25rem;
+    }
+
+    .choices,
+    .checks {
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .choice,
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .field {
+      display: grid;
+      gap: 0.35rem;
+      font-weight: 700;
+      min-width: 0;
+    }
+
+    .field .hint {
+      font-weight: 400;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 2px solid var(--line);
+      border-radius: 2px;
+      background: var(--field);
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 0.35rem 0;
+    }
+
+    ::placeholder {
+      color: var(--muted);
+      opacity: 1;
+    }
+
+    .preview {
+      margin-top: 0.75rem;
+      border: 1px solid var(--line);
+      background: var(--well);
+      min-height: 6rem;
+      display: grid;
+      place-items: center;
+      padding: 0.5rem;
+    }
+
+    .preview img {
+      display: block;
+      max-width: 100%;
+      max-height: 16rem;
+      height: auto;
+    }
+
+    .preview-note,
+    .remove-photo {
+      margin-top: 0.5rem;
+    }
+
+    #form-alert {
+      margin: 0;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--ink);
+      background: var(--well);
+    }
+
+    #outcome {
+      margin-top: 2rem;
+    }
+
+    .verdict {
+      margin: 0 0 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 4px solid var(--ink);
+      font-size: clamp(1.5rem, 3vw, 2rem);
+    }
+
+    .verdict-match {
+      border-top-color: var(--stamp);
+    }
+
+    .verdict-review {
+      border-top-style: dashed;
+    }
+
+    .facts,
+    .meta-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.35rem 1rem;
+      margin: 0;
+    }
+
+    .facts div,
+    .meta-grid div {
+      min-width: 0;
+    }
+
+    dt {
+      font-weight: 700;
+    }
+
+    dd {
+      margin: 0 0 0.5rem;
+    }
+
+    footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 1.5rem;
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+    }
+
+    footer a {
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+    }
+
+    @media (min-width: 40rem) {
+      .photos,
+      .meta-pair {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+
+      .options-fields {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .choices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.25rem;
+      }
+
+      #compare-button {
+        width: auto;
+        min-width: 16rem;
+      }
+
+      .facts {
+        grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr);
+      }
+
+      .facts dd {
+        margin: 0;
+      }
+    }
+
+    @media (min-width: 60rem) {
+      .options-fields {
+        grid-template-columns: 1.4fr 0.8fr 0.8fr;
+      }
+
+      .meta-grid {
+        grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
+      }
+
+      .meta-grid dd {
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <noscript>
+    <p class="sheet">This page needs JavaScript to send the photos to the comparison service.</p>
+  </noscript>
+  <a class="skip" href="#compare-form">Skip to the photos</a>
+  <div class="sheet">
+    <header>
+      <div class="letterhead">
+        <h1>Face compare</h1>
+        <button type="button" id="theme-toggle" aria-pressed="false">Use dark paper</button>
+      </div>
+      <p class="lede">Compare a reference photo with a second photo. You get a match verdict, a similarity score, and a liveness result when you ask for one.</p>
+      <p id="service-status">Checking whether the comparison service is up.</p>
+    </header>
+
+    <main>
+      <!-- Negative tabindex so the skip link can move focus here without putting the form itself in the tab order. -->
+      <form id="compare-form" novalidate tabindex="-1">
+        <p id="form-alert" role="alert" hidden></p>
+        <div class="photos">
+          <fieldset>
+            <legend>Reference photo</legend>
+            <div class="choices">
+              <label class="choice">
+                <input type="radio" name="image1-source" value="file" checked>
+                Upload a file
+              </label>
+              <label class="choice">
+                <input type="radio" name="image1-source" value="url">
+                Use an address
+              </label>
+            </div>
+            <div class="panel" data-panel="file">
+              <label class="field" for="image1-file">Photo file</label>
+              <input id="image1-file" type="file" accept="image/jpeg,image/png,image/webp,image/bmp,.jpg,.jpeg,.png,.webp,.bmp">
+            </div>
+            <div class="panel" data-panel="url" hidden>
+              <label class="field" for="image1-url">Photo address
+                <span class="hint">HTTP address or an S3 path.</span>
+              </label>
+              <input id="image1-url" type="text" spellcheck="false" autocomplete="off" placeholder="https:// or an S3 path">
+            </div>
+            <div class="preview">
+              <img id="image1-preview" alt="" hidden>
+              <p id="image1-preview-note" class="preview-note">No preview yet.</p>
+            </div>
+            <button type="button" class="remove-photo" id="image1-clear" hidden>Remove reference photo</button>
+          </fieldset>
+
+          <fieldset>
+            <legend>Second photo</legend>
+            <div class="choices">
+              <label class="choice">
+                <input type="radio" name="image2-source" value="file" checked>
+                Upload a file
+              </label>
+              <label class="choice">
+                <input type="radio" name="image2-source" value="url">
+                Use an address
+              </label>
+            </div>
+            <div class="panel" data-panel="file">
+              <label class="field" for="image2-file">Photo file</label>
+              <input id="image2-file" type="file" accept="image/jpeg,image/png,image/webp,image/bmp,.jpg,.jpeg,.png,.webp,.bmp">
+            </div>
+            <div class="panel" data-panel="url" hidden>
+              <label class="field" for="image2-url">Photo address
+                <span class="hint">HTTP address or an S3 path.</span>
+              </label>
+              <input id="image2-url" type="text" spellcheck="false" autocomplete="off" placeholder="https:// or an S3 path">
+            </div>
+            <div class="preview">
+              <img id="image2-preview" alt="" hidden>
+              <p id="image2-preview-note" class="preview-note">No preview yet.</p>
+            </div>
+            <button type="button" class="remove-photo" id="image2-clear" hidden>Remove second photo</button>
+          </fieldset>
+        </div>
+
+        <fieldset>
+          <legend>Comparison settings</legend>
+          <div class="options-fields">
+            <label class="field" for="channel-id">Channel ID
+              <span class="hint">Leave blank to send UNKNOWN.</span>
+              <input id="channel-id" type="text" autocomplete="off" placeholder="Channel ID">
+            </label>
+            <label class="field" for="match-threshold">Match threshold
+              <input id="match-threshold" type="number" min="0" max="1" step="0.01" value="0.75" inputmode="decimal" aria-describedby="threshold-hint">
+            </label>
+            <label class="field" for="confirm-threshold">Confirmation threshold
+              <input id="confirm-threshold" type="number" min="0" max="1" step="0.01" value="0.40" inputmode="decimal" aria-describedby="threshold-hint">
+            </label>
+          </div>
+          <p class="hint" id="threshold-hint">A score at or above the match threshold counts as the same person. A score from the confirmation threshold up to the match threshold needs a person to confirm. A score below the confirmation threshold counts as different people.</p>
+          <div class="checks">
+            <label class="check">
+              <input id="liveness-1" type="checkbox">
+              Check liveness on the reference photo
+            </label>
+            <label class="check">
+              <input id="liveness-2" type="checkbox">
+              Check liveness on the second photo
+            </label>
+          </div>
+        </fieldset>
+
+        <button type="submit" id="compare-button">Compare these photos</button>
+      </form>
+
+      <section id="outcome" aria-live="polite">
+        <h2>Result</h2>
+        <div id="outcome-body">
+          <p>No comparison yet. Add a reference photo and a second photo, then compare them.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p class="draft">Draft without direction.</p>
+      <a href="/docs">Open the API reference</a>
+      <a href="/health">Open the health check</a>
+    </footer>
+  </div>
+  <script>
+    const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+    const THEME_STORAGE_KEY = "face-compare-theme";
+    const DEFAULT_CHANNEL = "UNKNOWN";
+    const HTTP_ADDRESS = /^https?:\/\//i;
+
+    const SLOTS = {
+      image1: {
+        label: "reference photo",
+        previewAlt: "Preview of the reference photo",
+      },
+      image2: {
+        label: "second photo",
+        previewAlt: "Preview of the second photo",
+      },
+    };
+
+    const VERDICTS = {
+      TRUE: { className: "verdict verdict-match", text: "Same person" },
+      "Need Confirmation": { className: "verdict verdict-review", text: "Needs confirmation" },
+      Different: { className: "verdict verdict-different", text: "Different person" },
+    };
+
+    const objectUrls = {
+      image1: "",
+      image2: "",
+    };
+
+    const previewTokens = {
+      image1: 0,
+      image2: 0,
+    };
+
+    function slotSource(slotId) {
+      const selected = document.querySelector('input[name="' + slotId + '-source"]:checked');
+      return selected ? selected.value : "file";
+    }
+
+    function showSourcePanel(slotId) {
+      const source = slotSource(slotId);
+      const fieldset = document.getElementById(slotId + "-file").closest("fieldset");
+      fieldset.querySelectorAll("[data-panel]").forEach(function (panel) {
+        panel.hidden = panel.getAttribute("data-panel") !== source;
+      });
+      refreshPreview(slotId);
+    }
+
+    function revokeObjectUrl(slotId) {
+      if (objectUrls[slotId]) {
+        URL.revokeObjectURL(objectUrls[slotId]);
+        objectUrls[slotId] = "";
+      }
+    }
+
+    function setPreview(slotId, src, note) {
+      const image = document.getElementById(slotId + "-preview");
+      const noteNode = document.getElementById(slotId + "-preview-note");
+      const clearButton = document.getElementById(slotId + "-clear");
+      const token = ++previewTokens[slotId];
+      image.onload = null;
+      image.onerror = null;
+      if (src) {
+        image.hidden = false;
+        image.alt = SLOTS[slotId].previewAlt;
+        image.onerror = function () {
+          if (token !== previewTokens[slotId]) {
+            return;
+          }
+          const failedNote = slotSource(slotId) === "url"
+            ? "This page could not preview that address. The comparison service will still try to fetch it."
+            : "This browser could not preview that file. You can still compare it.";
+          setPreview(slotId, "", failedNote);
+        };
+        image.src = src;
+        noteNode.hidden = true;
+        noteNode.textContent = "";
+      } else {
+        image.hidden = true;
+        image.removeAttribute("src");
+        image.alt = "";
+        noteNode.hidden = false;
+        noteNode.textContent = note;
+      }
+      const hasFile = document.getElementById(slotId + "-file").files.length > 0;
+      const hasUrl = document.getElementById(slotId + "-url").value.trim() !== "";
+      clearButton.hidden = !(hasFile || hasUrl);
+    }
+
+    function refreshPreview(slotId) {
+      const source = slotSource(slotId);
+      if (source === "file") {
+        const file = document.getElementById(slotId + "-file").files[0];
+        revokeObjectUrl(slotId);
+        if (!file) {
+          setPreview(slotId, "", "No preview yet.");
+          return;
+        }
+        const url = URL.createObjectURL(file);
+        objectUrls[slotId] = url;
+        setPreview(slotId, url, "");
+        return;
+      }
+
+      revokeObjectUrl(slotId);
+      const address = document.getElementById(slotId + "-url").value.trim();
+      if (!address) {
+        setPreview(slotId, "", "No preview yet.");
+        return;
+      }
+      if (!HTTP_ADDRESS.test(address)) {
+        setPreview(slotId, "", "This page can preview http and https addresses. The service will still try this path.");
+        return;
+      }
+      setPreview(slotId, address, "");
+    }
+
+    function clearSlot(slotId) {
+      document.getElementById(slotId + "-file").value = "";
+      document.getElementById(slotId + "-url").value = "";
+      revokeObjectUrl(slotId);
+      setPreview(slotId, "", "No preview yet.");
+    }
+
+    function readThreshold(inputId, label) {
+      const field = document.getElementById(inputId);
+      const value = Number(field.value);
+      if (!Number.isFinite(value) || value < 0 || value > 1) {
+        return { error: label + " must be a number from 0 to 1.", field: field };
+      }
+      return { value: value, field: field };
+    }
+
+    function collectSlot(slotId) {
+      const source = slotSource(slotId);
+      const label = SLOTS[slotId].label;
+      if (source === "file") {
+        const field = document.getElementById(slotId + "-file");
+        const file = field.files[0];
+        if (!file) {
+          return { error: "Choose a " + label + " file, or switch to an address.", field: field };
+        }
+        if (file.size > MAX_PHOTO_BYTES) {
+          return {
+            error: "The " + label + " is larger than 8 MB. Choose a smaller file or use an address.",
+            field: field,
+          };
+        }
+        return { file: file, field: field };
+      }
+      const field = document.getElementById(slotId + "-url");
+      const address = field.value.trim();
+      if (!address) {
+        return { error: "Enter an address for the " + label + ", or switch to a file.", field: field };
+      }
+      return { url: address, field: field };
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise(function (resolve, reject) {
+        const reader = new FileReader();
+        reader.addEventListener("load", function () {
+          resolve(String(reader.result || ""));
+        });
+        reader.addEventListener("error", function () {
+          reject(new Error("read failed"));
+        });
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function showFormError(message, field) {
+      const alert = document.getElementById("form-alert");
+      alert.hidden = false;
+      alert.textContent = message;
+      if (field && typeof field.focus === "function") {
+        field.focus();
+      }
+    }
+
+    function clearFormError() {
+      const alert = document.getElementById("form-alert");
+      alert.hidden = true;
+      alert.textContent = "";
+    }
+
+    function setBusy(isBusy) {
+      const button = document.getElementById("compare-button");
+      const form = document.getElementById("compare-form");
+      button.disabled = isBusy;
+      button.textContent = isBusy ? "Comparing the two photos" : "Compare these photos";
+      form.setAttribute("aria-busy", isBusy ? "true" : "false");
+    }
+
+    function clearOutcome() {
+      const body = document.getElementById("outcome-body");
+      body.replaceChildren();
+      return body;
+    }
+
+    function addFact(list, term, detail) {
+      const termNode = document.createElement("dt");
+      termNode.textContent = term;
+      const detailNode = document.createElement("dd");
+      detailNode.textContent = detail;
+      list.append(termNode, detailNode);
+    }
+
+    function livenessText(metadata) {
+      if (metadata.is_live === true) {
+        return "Live face";
+      }
+      if (metadata.is_live === false) {
+        return "Not a live face";
+      }
+      return "Not checked";
+    }
+
+    function formatBox(bbox) {
+      if (!Array.isArray(bbox) || bbox.length === 0) {
+        return "Not returned";
+      }
+      return bbox.map(function (value) {
+        const number = Number(value);
+        return Number.isFinite(number) ? number.toFixed(1) : String(value);
+      }).join(", ");
+    }
+
+    function appendMetadata(parent, title, metadata) {
+      const section = document.createElement("section");
+      const heading = document.createElement("h3");
+      heading.textContent = title;
+      section.append(heading);
+      if (!metadata) {
+        const empty = document.createElement("p");
+        empty.textContent = "No photo details were returned.";
+        section.append(empty);
+        parent.append(section);
+        return;
+      }
+      const list = document.createElement("dl");
+      list.className = "meta-grid";
+      addFact(list, "Faces detected", String(metadata.faces_detected));
+      addFact(list, "Box", formatBox(metadata.bbox));
+      addFact(list, "Liveness", livenessText(metadata));
+      if (metadata.liveness_score !== null && metadata.liveness_score !== undefined) {
+        addFact(list, "Liveness score", String(metadata.liveness_score));
+      }
+      section.append(list);
+      parent.append(section);
+    }
+
+    function showOutcome() {
+      document.getElementById("outcome").scrollIntoView({ block: "nearest" });
+    }
+
+    function renderLoading() {
+      const body = clearOutcome();
+      const message = document.createElement("p");
+      message.textContent = "Comparing the two photos.";
+      body.append(message);
+      showOutcome();
+    }
+
+    function renderEmpty() {
+      const body = clearOutcome();
+      const message = document.createElement("p");
+      message.textContent = "No comparison yet. Add a reference photo and a second photo, then compare them.";
+      body.append(message);
+    }
+
+    function renderProblem(title, message, payload) {
+      const body = clearOutcome();
+      const heading = document.createElement("p");
+      heading.className = "verdict";
+      heading.textContent = title;
+      const detail = document.createElement("p");
+      detail.textContent = message;
+      body.append(heading, detail);
+      if (payload && (payload.image1_metadata || payload.image2_metadata)) {
+        const pair = document.createElement("div");
+        pair.className = "meta-pair";
+        appendMetadata(pair, "Reference photo", payload.image1_metadata);
+        appendMetadata(pair, "Second photo", payload.image2_metadata);
+        body.append(pair);
+      }
+      showOutcome();
+    }
+
+    function renderSuccess(payload) {
+      const body = clearOutcome();
+      const result = payload.result;
+      const heading = document.createElement("p");
+      if (result && VERDICTS[result.is_match]) {
+        heading.className = VERDICTS[result.is_match].className;
+        heading.textContent = VERDICTS[result.is_match].text;
+      } else {
+        heading.className = "verdict";
+        heading.textContent = "No verdict returned";
+      }
+      body.append(heading);
+
+      const facts = document.createElement("dl");
+      facts.className = "facts";
+      if (result) {
+        addFact(facts, "Reported verdict", result.is_match);
+        const percentage = result.similarity_percentage || "";
+        const score = result.similarity_score;
+        const scoreText = percentage
+          ? percentage + " (score " + score + ")"
+          : String(score);
+        addFact(facts, "Similarity", scoreText);
+        addFact(facts, "Confidence", result.confidence_level);
+      }
+      if (payload.ChId) {
+        addFact(facts, "Channel", payload.ChId);
+      }
+      if (payload.execution_time_ms !== null && payload.execution_time_ms !== undefined) {
+        addFact(facts, "Time", payload.execution_time_ms + " ms");
+      }
+      if (payload.message) {
+        addFact(facts, "Message", payload.message);
+      }
+      body.append(facts);
+
+      const pair = document.createElement("div");
+      pair.className = "meta-pair";
+      appendMetadata(pair, "Reference photo", payload.image1_metadata);
+      appendMetadata(pair, "Second photo", payload.image2_metadata);
+      body.append(pair);
+      showOutcome();
+    }
+
+    function formatHttpError(status, payload) {
+      if (payload && typeof payload.message === "string" && payload.message) {
+        return payload.error_code ? payload.error_code + ": " + payload.message : payload.message;
+      }
+      if (payload && Array.isArray(payload.detail)) {
+        const parts = payload.detail.map(function (item) {
+          return item && item.msg ? item.msg : "Invalid field";
+        });
+        return parts.join(" ");
+      }
+      if (payload && typeof payload.detail === "string") {
+        return payload.detail;
+      }
+      return "The comparison service returned status " + status + ".";
+    }
+
+    async function imagePayload(collected) {
+      if (collected.url) {
+        return collected.url;
+      }
+      return readFileAsDataUrl(collected.file);
+    }
+
+    async function submitComparison(event) {
+      event.preventDefault();
+      clearFormError();
+
+      const first = collectSlot("image1");
+      if (first.error) {
+        showFormError(first.error, first.field);
+        return;
+      }
+      const second = collectSlot("image2");
+      if (second.error) {
+        showFormError(second.error, second.field);
+        return;
+      }
+      const match = readThreshold("match-threshold", "Match threshold");
+      if (match.error) {
+        showFormError(match.error, match.field);
+        return;
+      }
+      const confirm = readThreshold("confirm-threshold", "Confirmation threshold");
+      if (confirm.error) {
+        showFormError(confirm.error, confirm.field);
+        return;
+      }
+      if (confirm.value >= match.value) {
+        showFormError(
+          "The confirmation threshold has to sit below the match threshold.",
+          confirm.field
+        );
+        return;
+      }
+
+      const channelField = document.getElementById("channel-id");
+      const channel = channelField.value.trim() || DEFAULT_CHANNEL;
+      setBusy(true);
+      renderLoading();
+
+      try {
+        const image1 = await imagePayload(first);
+        const image2 = await imagePayload(second);
+        const response = await fetch("/v1/compare", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ChId: channel,
+            image1: image1,
+            image2: image2,
+            options: {
+              check_liveness_image1: document.getElementById("liveness-1").checked,
+              check_liveness_image2: document.getElementById("liveness-2").checked,
+              similarity_threshold: match.value,
+              need_confirmation_threshold: confirm.value,
+            },
+          }),
+        });
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (parseError) {
+          payload = null;
+        }
+        if (!response.ok || (payload && payload.status === "FAILED")) {
+          renderProblem(
+            "Comparison failed",
+            formatHttpError(response.status, payload),
+            payload
+          );
+          return;
+        }
+        renderSuccess(payload || {});
+      } catch (error) {
+        const readingFailed = error && error.message === "read failed";
+        renderProblem(
+          readingFailed ? "Could not read a photo" : "The service did not answer",
+          readingFailed
+            ? "This browser could not read one of the photo files. Choose the files again."
+            : "The comparison service did not respond. Check that it is running, then try again."
+        );
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function applyTheme(theme) {
+      const dark = theme === "dark";
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      const button = document.getElementById("theme-toggle");
+      button.textContent = dark ? "Use light paper" : "Use dark paper";
+      button.setAttribute("aria-pressed", dark ? "true" : "false");
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, dark ? "dark" : "light");
+      } catch (error) {
+        /* The toggle still works for this visit. */
+      }
+    }
+
+    function checkService() {
+      const status = document.getElementById("service-status");
+      status.textContent = "Checking whether the comparison service is up.";
+      fetch("/health")
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error("health failed");
+          }
+          return response.json();
+        })
+        .then(function (body) {
+          const device = body && body.device ? " on " + body.device : "";
+          status.textContent = "Comparison service is up" + device + ".";
+        })
+        .catch(function () {
+          status.textContent = "The comparison service did not respond. Start it, then reload this page. You can still fill in the form.";
+        });
+    }
+
+    function bindSlot(slotId) {
+      document.querySelectorAll('input[name="' + slotId + '-source"]').forEach(function (radio) {
+        radio.addEventListener("change", function () {
+          showSourcePanel(slotId);
+        });
+      });
+      document.getElementById(slotId + "-file").addEventListener("change", function () {
+        refreshPreview(slotId);
+      });
+      document.getElementById(slotId + "-url").addEventListener("input", function () {
+        const hasFile = document.getElementById(slotId + "-file").files.length > 0;
+        const hasUrl = document.getElementById(slotId + "-url").value.trim() !== "";
+        document.getElementById(slotId + "-clear").hidden = !(hasFile || hasUrl);
+      });
+      document.getElementById(slotId + "-url").addEventListener("change", function () {
+        refreshPreview(slotId);
+      });
+      document.getElementById(slotId + "-clear").addEventListener("click", function () {
+        clearSlot(slotId);
+      });
+    }
+
+    document.getElementById("compare-form").addEventListener("submit", submitComparison);
+    document.getElementById("theme-toggle").addEventListener("click", function () {
+      const current = document.documentElement.getAttribute("data-theme");
+      applyTheme(current === "dark" ? "light" : "dark");
+    });
+    bindSlot("image1");
+    bindSlot("image2");
+    applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light");
+    checkService();
+  </script>
+</body>
+</html>

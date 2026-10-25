@@ -25,6 +25,12 @@ mkdocs-git-committers-plugin-2
 mkdocs-git-revision-date-localized-plugin
 
 [gpu]
+nvidia-cublas-cu12<13,>=12.4
+nvidia-cuda-nvrtc-cu12<13,>=12.4
+nvidia-cuda-runtime-cu12<13,>=12.4
+nvidia-cudnn-cu12<10,>=9.0
+nvidia-cufft-cu12<12,>=11.0
+nvidia-curand-cu12<11,>=10.3
 
 [gpu:python_version < "3.11"]
 onnxruntime-gpu<1.24,>=1.16.0

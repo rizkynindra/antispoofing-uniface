@@ -28,20 +28,50 @@ import os
 from uniface.log import Logger
 
 
-def _preload_cudnn() -> None:
-    """Preload cuDNN shared library if installed via nvidia-cudnn-cu12 pip package."""
+# Load order matches the CUDA provider's dependencies. cuBLAS must see its
+# Lt library first. These wheels ship the libraries inside site-packages, which
+# is not on the system linker path of a machine that only has the NVIDIA driver.
+_CUDA_LIBRARY_SONAMES = (
+    "libcudart.so.12",
+    "libcublasLt.so.12",
+    "libcublas.so.12",
+    "libcufft.so.11",
+    "libcurand.so.10",
+    "libnvrtc.so.12",
+    "libcudnn.so.9",
+)
+
+
+def _preload_cuda_libraries() -> None:
+    """Load pip CUDA libraries so ONNX Runtime can open the CUDA provider.
+
+    A CPU-only install has no nvidia package, so this stays quiet. RTLD_GLOBAL
+    keeps each soname visible when the provider is opened later.
+    """
     try:
-        import nvidia.cudnn
-
-        lib_dir = os.path.join(list(nvidia.cudnn.__path__)[0], "lib")
-        cudnn_so = os.path.join(lib_dir, "libcudnn.so.9")
-        if os.path.exists(cudnn_so):
-            ctypes.CDLL(cudnn_so)
+        import nvidia
     except Exception:
-        pass
+        return
+
+    wanted = set(_CUDA_LIBRARY_SONAMES)
+    found: dict[str, str] = {}
+    for root in nvidia.__path__:
+        for dirpath, _, filenames in os.walk(root):
+            for filename in filenames:
+                if filename in wanted and filename not in found:
+                    found[filename] = os.path.join(dirpath, filename)
+
+    for soname in _CUDA_LIBRARY_SONAMES:
+        library_path = found.get(soname)
+        if library_path is None:
+            continue
+        try:
+            ctypes.CDLL(library_path, mode=ctypes.RTLD_GLOBAL)
+        except OSError:
+            Logger.warning("CUDA library could not be loaded: %s", library_path)
 
 
-_preload_cudnn()
+_preload_cuda_libraries()
 
 __all__ = ['create_onnx_session', 'get_available_providers']
 

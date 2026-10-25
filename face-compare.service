@@ -12,9 +12,9 @@ WorkingDirectory=/home/sysadmin/antispoofing-uniface/face_compare_api
 Environment="PATH=/home/sysadmin/antispoofing-uniface/.venv/bin:/usr/local/cuda/bin:/usr/bin:/bin"
 Environment="PYTHONPATH=/home/sysadmin/antispoofing-uniface/face_compare_api:/home/sysadmin/antispoofing-uniface"
 Environment="PYTHONUNBUFFERED=1"
-Environment="CUDA_VISIBLE_DEVICES=0,1"
 Environment="OMP_NUM_THREADS=4"
-Environment="ORT_TENSORRT_FP16_ENABLE=1"
+# Leave CUDA_VISIBLE_DEVICES unset so every GPU from the driver is available.
+# Set it only to hide devices, for example CUDA_VISIBLE_DEVICES=0,1.
 
 # Start Gunicorn with Uvicorn workers using app.main:app
 ExecStart=/home/sysadmin/antispoofing-uniface/.venv/bin/gunicorn -c gunicorn_conf.py app.main:app
