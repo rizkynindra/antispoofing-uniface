@@ -11,7 +11,7 @@ from uniface.face_utils import compute_similarity
 from uniface.recognition import AdaFace
 from uniface.spoofing import MiniFASNet
 
-MATCH_THRESHOLD = 0.75
+MATCH_THRESHOLD = 0.70
 CONFIRM_THRESHOLD = 0.40
 
 detector = RetinaFace()
@@ -84,47 +84,41 @@ def compare_faces(
     return "\n".join(lines)
 
 
-# Side-by-side photos stay on one row on a phone. The compare control sits under both
-# so the uploads are on screen before any scroll. Score rules stay under that control.
+# Full-width previews, one under the other. A phone column is too narrow for two
+# usable face previews. The compare control stays under both photos.
 _LAYOUT_CSS = """
-.photo-row {
-  flex-wrap: nowrap !important;
-  gap: 8px;
-}
-.photo-row > div {
-  min-width: 0 !important;
-}
 .compare-action button {
   min-height: 44px;
   width: 100%;
 }
 """
 
+_WEBCAM = gr.WebcamOptions(mirror=True, constraints={"video": {"facingMode": "user"}})
+
 with gr.Blocks(title="Face compare", css=_LAYOUT_CSS) as demo:
     gr.Markdown("## Face compare")
-    with gr.Row(elem_classes=["photo-row"]):
-        with gr.Column(scale=1, min_width=0):
-            reference = gr.Image(
-                label="Reference photo",
-                type="numpy",
-                height=168,
-                sources=["upload"],
-            )
-        with gr.Column(scale=1, min_width=0):
-            photo = gr.Image(
-                label="Second photo",
-                type="numpy",
-                height=168,
-                sources=["upload"],
-            )
+    reference = gr.Image(
+        label="Reference photo",
+        type="numpy",
+        height=320,
+        sources=["upload", "webcam"],
+        webcam_options=_WEBCAM,
+    )
+    photo = gr.Image(
+        label="Second photo",
+        type="numpy",
+        height=320,
+        sources=["upload", "webcam"],
+        webcam_options=_WEBCAM,
+    )
     compare_button = gr.Button("Compare the photos", variant="primary", elem_classes=["compare-action"])
     check_spoof = gr.Checkbox(
         label="Also check the second photo for a printed photo, screen, or mask",
         value=False,
     )
     gr.Markdown(
-        "A score of 0.75 or more is the same person. "
-        "A score from 0.40 up to 0.75 needs confirmation. Below 0.40 is a different person."
+        "A score of 0.70 or more is the same person. "
+        "A score from 0.40 up to 0.70 needs confirmation. Below 0.40 is a different person."
     )
     result = gr.Textbox(label="Result", lines=4)
     compare_button.click(

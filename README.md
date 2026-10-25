@@ -297,7 +297,7 @@ Future<void> matchPhoto(Uint8List capturedJpeg) async {
 
 ### 4. Hugging Face Space
 
-The public demo is the Gradio app in [huggingface/space](huggingface/space). It is published at https://huggingface.co/spaces/rizkynindra/face-compare. Visitors upload two photos side by side and press **Compare the photos**. Matching uses AdaFace IR-101. The first start downloads that model (about 249 MB). The spoof check is optional and looks at the second photo only. Do not copy `.env` into the Space.
+The public demo is the Gradio app in [huggingface/space](huggingface/space). It is published at https://huggingface.co/spaces/rizkynindra/face-compare. Visitors upload two photos, or take them with the phone camera, then press **Compare the photos**. The photos are stacked, one under the other, so each preview uses the full width. Matching uses AdaFace IR-101. The first start downloads that model (about 249 MB). The spoof check is optional and looks at the second photo only. Do not copy `.env` into the Space.
 
 [Dockerfile](Dockerfile) is a separate CPU image of this FastAPI app for a Docker Space (`HF_SPACE=1`, port `7860`). It is not the Space that is running. Its card text is [huggingface/README.md](huggingface/README.md). The running Space card is [huggingface/space/README.md](huggingface/space/README.md).
 
