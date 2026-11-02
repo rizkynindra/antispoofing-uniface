@@ -424,6 +424,20 @@ https://<the server's LAN IP>:2112/presensi
 
 Both runners understand the pair: the dev runner takes `--ssl-certfile`/`--ssl-keyfile` (or the same env vars), and gunicorn reads them from `gunicorn_conf.py` in production. A self-signed certificate makes the browser show one warning; press through it once per browser and the camera works from then on. For a certificate without the warning, put the service behind a reverse proxy with a certificate the browser already trusts.
 
+If the script answers `permission denied` on the server, call it through bash instead of executing it (`bash face_compare_api/make_dev_cert.sh <IP>`), or run the openssl command inside it directly:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -sha256 -days 825 -nodes \
+  -keyout face_compare_api/certs/key.pem \
+  -out face_compare_api/certs/cert.pem \
+  -subj "/CN=face-compare" \
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:<the server's LAN IP>"
+```
+
+### Why plain http can never open the camera
+
+This is a browser rule, not a service setting: `getUserMedia` is refused on every origin except `https://` and `http://localhost`. No API or service change can lift it. When a demo device must stay on plain `http://`, the one workaround is a per-browser flag: in Chrome or Edge open `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, enter `http://<the server's LAN IP>:2112`, enable it, and relaunch. That device then treats this one address as secure and the camera page works over plain http. Set it on every device you demo from, and remember it is a development escape hatch, not a production configuration.
+
 ---
 
 ## 📊 Decision Threshold Matrix

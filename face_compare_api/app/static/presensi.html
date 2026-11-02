@@ -568,11 +568,18 @@
 
     elements.startCamera.addEventListener("click", startCamera);
 
+    function cameraHint() {
+      if (!window.isSecureContext) {
+        return "This page is on plain http, and every browser blocks the camera there. Open this page over https (see the README section Use HTTPS for the camera page), or on the server machine itself at http://localhost:" + location.port + ".";
+      }
+      return "This browser cannot open a camera. A phone or laptop browser is needed.";
+    }
+
     async function startCamera() {
       clearAlert();
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        elements.cameraStatus.textContent = "This browser cannot open a camera.";
-        showAlert("This browser cannot open a camera. A phone or laptop browser over https or localhost is needed.");
+        elements.cameraStatus.textContent = "The camera is not available here.";
+        showAlert(cameraHint());
         return;
       }
       elements.startCamera.disabled = true;
@@ -773,6 +780,9 @@
     theme();
     checkService();
     refreshPeople();
+    if (!window.isSecureContext) {
+      elements.cameraStatus.textContent = "The camera needs https or localhost. " + cameraHint();
+    }
     startCamera();
   </script>
 </body>
