@@ -53,6 +53,10 @@ class Settings(BaseModel):
         os.path.join(BASE_DIR, "data", "face_db"),
     )
     FACE_GALLERY_ADMIN_TOKEN: str = os.getenv("FACE_GALLERY_ADMIN_TOKEN", "")
+    FACE_GALLERY_SEED_DIR: str = os.getenv(
+        "FACE_GALLERY_SEED_DIR",
+        os.path.join(os.path.dirname(BASE_DIR), "presensi"),
+    )
 
     LOG_DIR: str = DEFAULT_LOG_DIR
     LOG_FILE_PATTERN: str = os.getenv("LOG_FILE_PATTERN", "system_log_{date}.log")

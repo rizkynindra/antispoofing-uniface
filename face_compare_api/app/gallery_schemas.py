@@ -51,6 +51,41 @@ class GallerySearchRequest(BaseModel):
     ChId: str = Field(default="UNKNOWN", description="Caller channel id. Echoed on the response.")
 
 
+class GallerySeedRequest(BaseModel):
+    """Enroll every reference photo in the configured seed folder."""
+
+    replace: bool = Field(default=True, description="Replace a photo when the person_id already exists.")
+    check_liveness: bool = Field(
+        default=False,
+        description="Reject a seed photo when MiniFASNet marks it as a print, screen, or mask.",
+    )
+    ChId: str = Field(default="UNKNOWN", description="Caller channel id. Echoed on the response.")
+
+
+class GallerySeedOutcome(BaseModel):
+    """What happened to one seed file."""
+
+    person_id: str
+    state: Literal["ENROLLED", "REPLACED", "SKIPPED"]
+    faces_detected: int | None = None
+    detection_confidence: float | None = None
+    message: str
+
+
+class GallerySeedResponse(BaseModel):
+    """Result of seeding the gallery from a folder."""
+
+    status: Literal["SUCCESS"] = "SUCCESS"
+    ChId: str
+    seed_dir: str
+    files_found: int
+    enrolled: int
+    replaced: int
+    skipped: int
+    results: list[GallerySeedOutcome]
+    message: str
+
+
 class GalleryPerson(BaseModel):
     """Enrolled person, without the embedding."""
 

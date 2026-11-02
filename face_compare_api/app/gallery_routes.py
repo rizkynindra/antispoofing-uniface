@@ -15,11 +15,19 @@ from app.gallery_schemas import (
     GalleryPerson,
     GallerySearchRequest,
     GallerySearchResponse,
+    GallerySeedRequest,
+    GallerySeedResponse,
 )
 from app.schemas import ErrorResponse
 from app.services.face_engine import face_engine
 from app.services.face_gallery import FaceGallery
-from app.services.gallery_service import GalleryFailure, enroll_person, search_gallery, to_person
+from app.services.gallery_service import (
+    GalleryFailure,
+    enroll_person,
+    search_gallery,
+    seed_gallery,
+    to_person,
+)
 
 router = APIRouter(prefix="/v1/gallery", tags=["Face Gallery"])
 ADMIN_TOKEN_HEADER = "X-Admin-Token"
@@ -111,6 +119,27 @@ def search_face(payload: GallerySearchRequest) -> GallerySearchResponse | JSONRe
     if blocked is not None:
         return blocked
     outcome = search_gallery(payload, gallery=get_gallery(), engine=face_engine)
+    if isinstance(outcome, GalleryFailure):
+        return _error(outcome, payload.ChId)
+    return outcome
+
+
+@router.post(
+    "/seed",
+    response_model=GallerySeedResponse,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
+)
+def seed_from_folder(request: Request, payload: GallerySeedRequest) -> GallerySeedResponse | JSONResponse:
+    """Enroll every image in FACE_GALLERY_SEED_DIR as one person per file."""
+    blocked = _space_blocked() or _admin_blocked(request)
+    if blocked is not None:
+        return blocked
+    outcome = seed_gallery(
+        payload,
+        gallery=get_gallery(),
+        engine=face_engine,
+        seed_dir=Path(settings.FACE_GALLERY_SEED_DIR),
+    )
     if isinstance(outcome, GalleryFailure):
         return _error(outcome, payload.ChId)
     return outcome

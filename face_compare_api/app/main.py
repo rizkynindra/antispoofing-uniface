@@ -23,6 +23,7 @@ logger = StandardLogger(
 )
 
 UI_INDEX = Path(__file__).resolve().parent / "static" / "index.html"
+PRESENSI_PAGE = Path(__file__).resolve().parent / "static" / "presensi.html"
 _SPACE_HIDE_START = "<!-- space-hide-start -->"
 _SPACE_HIDE_END = "<!-- space-hide-end -->"
 _PRIVATE_API_TITLE = "Face Comparison API"
@@ -87,6 +88,12 @@ async def face_compare_page() -> Response:
         return FileResponse(UI_INDEX, headers=headers)
     html = page_for_space(UI_INDEX.read_text(encoding="utf-8"))
     return HTMLResponse(html, headers=headers)
+
+
+@app.get("/presensi", include_in_schema=False)
+async def presensi_camera_page() -> Response:
+    """Serve the attendance demo: front camera capture against the face gallery."""
+    return FileResponse(PRESENSI_PAGE, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/health", tags=["Health"])

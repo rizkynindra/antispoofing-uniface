@@ -7,7 +7,8 @@ Unified Face Verification, Anti-Spoofing (Liveness Detection), and Batch Face Co
 ## 📋 Features
 
 * **1:1 Face Comparison / Verification**: Cosine similarity matching using normalized 512-D embeddings (AdaFace IR-101).
-* **Face gallery search**: An admin stores one reference photo per person. A later selfie is scored against that gallery.
+* **Face gallery search**: An admin stores one reference photo per person. A later selfie is scored against that gallery. A whole folder can be enrolled in one call, one person per file.
+* **Attendance camera demo**: A browser page that opens the front camera, captures a frame, and checks it against the gallery ([`/presensi`](#attendance-camera-demo)).
 * **Anti-Spoofing / Presentation Attack Detection (PAD)**: Passive RGB liveness detection using MiniFASNet.
 * **Face Quality & Pre-checks**: 5-point facial landmark alignment & bounding box detection (RetinaFace).
 * **Flexible Input Formats**: Accepts direct HTTP/S3 URLs, relative S3 paths, or Base64 encoded strings.
@@ -34,6 +35,8 @@ uv venv --python 3.10
 # Activate virtual environment
 source .venv/bin/activate
 ```
+
+A `uv venv` does not include `pip`. In step 3, use `uv pip install` instead of `pip install` while this venv is active.
 
 #### Option B: Using standard Python `venv`
 ```bash
@@ -88,6 +91,7 @@ python face_compare_api/run.py --port 2112 --reload
 ```
 
 * **Face compare page**: [http://localhost:2112/](http://localhost:2112/)
+* **Attendance camera page**: [http://localhost:2112/presensi](http://localhost:2112/presensi)
 * **Interactive Swagger UI**: [http://localhost:2112/docs](http://localhost:2112/docs)
 * **ReDoc Documentation**: [http://localhost:2112/redoc](http://localhost:2112/redoc)
 * **Health Check**: `GET http://localhost:2112/health`
@@ -377,6 +381,30 @@ curl -X POST http://127.0.0.1:2112/v1/gallery/search \
 ```
 
 `GET /v1/gallery` lists people. `GET /v1/gallery/EMP001/photo` returns the stored JPEG. `DELETE /v1/gallery/EMP001` removes that person. OpenAPI for these routes is on `/docs`.
+
+### Seed the gallery from a folder
+
+`POST /v1/gallery/seed` enrolls every image in `FACE_GALLERY_SEED_DIR` (default: the `presensi/` folder in the repo) as one person per file. The file name without the extension becomes the `person_id`, so `presensi/177641794.jpg` is enrolled as `177641794`. Like enroll, this route needs the `X-Admin-Token` header when a token is set.
+
+```bash
+curl -X POST http://127.0.0.1:2112/v1/gallery/seed \
+  -H 'Content-Type: application/json' \
+  -d '{"replace":true,"check_liveness":false}'
+```
+
+The response reports one line per file, marked `ENROLLED`, `REPLACED`, or `SKIPPED`. A file is skipped when no face is detected in it, or when `check_liveness` is on and the photo fails the spoof check. Run the call again after fixing a skipped photo; with `replace: true` the already-enrolled files are re-stored without error.
+
+### Attendance camera demo
+
+Open [http://127.0.0.1:2112/presensi](http://127.0.0.1:2112/presensi). The page opens the front camera as soon as it loads (front camera on a phone, `facingMode: "user"`). One press of **Capture and check** grabs a JPEG frame and sends it to the service:
+
+- **Find who this is** searches the whole gallery and shows the top candidates with their stored photos.
+- **Compare against one person** checks the frame against one chosen person's stored photo.
+- The liveness checkbox adds the MiniFASNet spoof check on the captured frame.
+
+The reference faces must be enrolled first by an admin, with `POST /v1/gallery/seed` (see the previous section) or one `POST /v1/gallery` call per person. The gallery survives a service restart.
+
+The browser needs `https://` or `http://localhost` to grant camera access; `getUserMedia` is blocked on plain `http://` from another machine.
 
 ---
 

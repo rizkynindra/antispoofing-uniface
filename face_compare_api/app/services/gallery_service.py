@@ -1,15 +1,21 @@
 """Enroll a reference face and search a selfie against the gallery."""
 
+import base64
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 from fastapi import status
 
+from app.config import settings
 from app.gallery_schemas import (
     GalleryCandidate,
     GalleryEnrollRequest,
     GalleryEnrollResponse,
     GalleryPerson,
+    GallerySeedOutcome,
+    GallerySeedRequest,
+    GallerySeedResponse,
     GallerySearchRequest,
     GallerySearchResponse,
 )
@@ -95,6 +101,71 @@ def enroll_person(
         detection_confidence=entry.detection_confidence,
         replaced=replaced,
         message=f"{verb} {entry.person_id} in the face gallery.",
+    )
+
+
+def seed_gallery(
+    payload: GallerySeedRequest,
+    *,
+    gallery: FaceGallery,
+    engine: FaceEngine,
+    seed_dir: Path,
+    image_loader=load_image,
+) -> GallerySeedResponse | GalleryFailure:
+    """Enroll one person per image file in the seed folder, keyed by file name."""
+    if not seed_dir.is_dir():
+        return GalleryFailure(
+            "SEED_DIR_MISSING",
+            f"The seed folder {seed_dir} does not exist on this machine.",
+            status.HTTP_400_BAD_REQUEST,
+        )
+    extensions = settings.IMAGE_FILE_EXTENSIONS
+    paths = sorted(path for path in seed_dir.iterdir() if path.suffix.lower() in extensions)
+    if not paths:
+        return GalleryFailure(
+            "SEED_DIR_EMPTY",
+            f"No image file was found in {seed_dir}.",
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+    results: list[GallerySeedOutcome] = []
+    for path in paths:
+        request = GalleryEnrollRequest(
+            person_id=path.stem,
+            label=path.stem,
+            image=base64.b64encode(path.read_bytes()).decode("ascii"),
+            replace=payload.replace,
+            check_liveness=payload.check_liveness,
+            ChId=payload.ChId,
+        )
+        outcome = enroll_person(request, gallery=gallery, engine=engine, image_loader=image_loader)
+        results.append(_seed_outcome(path.stem, outcome))
+
+    enrolled = sum(result.state == "ENROLLED" for result in results)
+    replaced = sum(result.state == "REPLACED" for result in results)
+    skipped = sum(result.state == "SKIPPED" for result in results)
+    return GallerySeedResponse(
+        ChId=payload.ChId,
+        seed_dir=str(seed_dir),
+        files_found=len(paths),
+        enrolled=enrolled,
+        replaced=replaced,
+        skipped=skipped,
+        results=results,
+        message=f"Seeded {enrolled + replaced} of {len(paths)} photos from {seed_dir}.",
+    )
+
+
+def _seed_outcome(person_id: str, outcome: GalleryEnrollResponse | GalleryFailure) -> GallerySeedOutcome:
+    """Turn one enroll result into a per-file seed report line."""
+    if isinstance(outcome, GalleryFailure):
+        return GallerySeedOutcome(person_id=person_id, state="SKIPPED", message=outcome.message)
+    return GallerySeedOutcome(
+        person_id=person_id,
+        state="REPLACED" if outcome.replaced else "ENROLLED",
+        faces_detected=outcome.faces_detected,
+        detection_confidence=outcome.detection_confidence,
+        message=outcome.message,
     )
 
 
