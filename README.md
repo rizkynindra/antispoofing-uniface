@@ -406,6 +406,24 @@ The reference faces must be enrolled first by an admin, with `POST /v1/gallery/s
 
 The browser needs `https://` or `http://localhost` to grant camera access; `getUserMedia` is blocked on plain `http://` from another machine.
 
+### Use HTTPS for the camera page from another machine
+
+Browsers only open a camera on `https://` or `http://localhost`. Plain `http://<server-ip>:2112` shows the page but the camera button fails. The service can serve TLS itself, no reverse proxy needed:
+
+```bash
+# 1. Generate a self-signed certificate, once
+cd face_compare_api && ./make_dev_cert.sh <the server's LAN IP> && cd ..
+
+# 2. Point the service at the pair (in .env, or export before starting)
+SSL_CERTFILE=face_compare_api/certs/cert.pem
+SSL_KEYFILE=face_compare_api/certs/key.pem
+
+# 3. Restart the service, then open
+https://<the server's LAN IP>:2112/presensi
+```
+
+Both runners understand the pair: the dev runner takes `--ssl-certfile`/`--ssl-keyfile` (or the same env vars), and gunicorn reads them from `gunicorn_conf.py` in production. A self-signed certificate makes the browser show one warning; press through it once per browser and the camera works from then on. For a certificate without the warning, put the service behind a reverse proxy with a certificate the browser already trusts.
+
 ---
 
 ## 📊 Decision Threshold Matrix

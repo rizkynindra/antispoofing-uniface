@@ -31,3 +31,8 @@ loglevel = "info"
 
 # Process Naming
 proc_name = "svc-face-compare"
+
+# TLS. Set both SSL_CERTFILE and SSL_KEYFILE so gunicorn serves https.
+# Browsers only allow getUserMedia (the camera page) on https or localhost.
+certfile = os.getenv("SSL_CERTFILE") or None
+keyfile = os.getenv("SSL_KEYFILE") or None

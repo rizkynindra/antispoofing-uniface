@@ -58,6 +58,9 @@ class Settings(BaseModel):
         os.path.join(os.path.dirname(BASE_DIR), "presensi"),
     )
 
+    SSL_CERTFILE: str = os.getenv("SSL_CERTFILE", "")
+    SSL_KEYFILE: str = os.getenv("SSL_KEYFILE", "")
+
     LOG_DIR: str = DEFAULT_LOG_DIR
     LOG_FILE_PATTERN: str = os.getenv("LOG_FILE_PATTERN", "system_log_{date}.log")
 

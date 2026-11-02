@@ -2,4 +2,5 @@ anti-slop
 excel
 .env
 face_compare_api/data/
+face_compare_api/certs/
 presensi
